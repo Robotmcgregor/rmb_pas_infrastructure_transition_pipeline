@@ -33,8 +33,8 @@ import warnings
 from glob import glob
 import geopandas as gpd
 import sys
-warnings.filterwarnings("ignore")
 
+warnings.filterwarnings("ignore")
 
 
 def cmd_args_fn():
@@ -95,7 +95,7 @@ def user_id_fn(remote_desktop):
 
 
 def temporary_dir(final_user):
-    """ Create an temporary directory 'user_YYYMMDD_HHMM' in your working directory - this directory will be deleted
+    """ Create a temporary directory 'user_YYYMMDD_HHMM' in your working directory - this directory will be deleted
     at the completion of the script.
 
     :param final_user: string object containing the NTG user id.
@@ -157,7 +157,6 @@ def dir_folders_2_fn(direc, directory_list, feature_type):
     check_dir = os.path.isdir(previous_dir)
     if not check_dir:
         os.mkdir(previous_dir)
-
 
     path_list = []
     for i in directory_list:
@@ -260,7 +259,6 @@ def delete_original_files(delete_files_list):
             print("No files in the were located....")
 
 
-
 def copy_original_files(delete_files_list, primary_output_dir, feature_type):
     """ Delete all original shapefiles and extension files for geo-dataframes with no UPLOAD column.
 
@@ -286,7 +284,7 @@ def next_subfolder_fn(path_to_parent):
 
 def main_routine():
     """ This pipeline hunts through the Pastoral Districts directory for shapefiles located within a properties
-    Server_Upload sub-directory. Data undergoes several attribute and spatial checks, if individual property
+    Server_Upload subdirectory. Data undergoes several attribute and spatial checks, if individual property
     """
 
     """ This script runs the command arguments and controls the pipelines workflow, finally deleting """
@@ -295,20 +293,20 @@ def main_routine():
 
     # read in the command arguments
     cmd_args = cmd_args_fn()
-    #direc = cmd_args.directory
+    # direc = cmd_args.directory
     output_dir = cmd_args.output_dir
     pastoral_districts_path = cmd_args.pastoral_districts_directory
     remote_desktop = cmd_args.remote_desktop
     transition_dir = cmd_args.transition_dir
     assets_dir = cmd_args.assets_dir
     year = cmd_args.year
-    #migration = cmd_args.migration_directory
+    # migration = cmd_args.migration_directory
 
     if not year:
         print('You must specify the year the data was collected for (e.g. -y 2021)')
         sys.exit()
 
-    print('='*50)
+    print('=' * 50)
     previous_transfer = os.path.join(transition_dir, "Previous_Transfer")
     for_migration = os.path.join(transition_dir, "For_Migration")
     print('LOCATION OF PREVIOUS TRANSITION DIRECTORY: ', previous_transfer)
@@ -326,9 +324,7 @@ def main_routine():
 
                 sys.exit()
 
-    #todo once sub-dirs have been updated remove second line
     directory_list = ["Points", "Lines", "Polygons", "Paddocks"]
-    #directory_list = ["points", "lines", "polygons", "paddocks"]
 
     pastoral_estate = assets_search_fn("NT_Pastoral_Estate.shp", "assets\\shapefile")
 
@@ -344,8 +340,6 @@ def main_routine():
     dir_folders_2_fn(transition_dir, directory_list, 'Previous_Transfer')
     dir_folders_2_fn(transition_dir, directory_list, 'For_Migration')
 
-    # for_migration_path = os.path.join(transition_dir, str(year), "for_migration")
-
     import step1_2_search_folders
     delete_files_list, concat_list, feature_type_list = step1_2_search_folders.main_routine(
         pastoral_districts_path, assets_dir, year, primary_output_dir, directory_list)
@@ -353,7 +347,6 @@ def main_routine():
     for gdf, feature_type in zip(concat_list, feature_type_list):
         print("WORKFLOW: ", feature_type)
 
-        #todo tab imports up to line 406
         import step1_3_concatenate_clean
         gdf = step1_3_concatenate_clean.main_routine(
             gdf, feature_type, pastoral_estate)
@@ -380,7 +373,7 @@ def main_routine():
     print('the following files have been upload to the transfer dive and the originals will be deleted:')
     delete_original_files(delete_files_list)
 
-    print('='*50)
+    print('=' * 50)
     print(" - looking for pdf maps....")
     import step1_7_pdf_maps
     step1_7_pdf_maps.main_routine(

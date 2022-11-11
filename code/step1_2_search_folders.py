@@ -64,11 +64,11 @@ def property_path_fn(path):
 
 
 def upload_download_path_fn(prop_list):
-    """ Create a path to to the Server Upload and Download sub-directories for each property and return them as a list.
+    """ Create a path to the Server Upload and Download subdirectories for each property and return them as a list.
 
-    :param prop_list: list object containing the path to all property sub-directories.
-    :return upload_list: list object containing the path to each properties Server_Upload sub-directory.
-    :return download_list: list object containing the path to each properties Server_Upload sub-directory.
+    :param prop_list: list object containing the path to all property subdirectories.
+    :return upload_list: list object containing the path to each property Server_Upload subdirectory.
+    :return download_list: list object containing the path to each property Server_Upload subdirectory.
     """
     upload_list = []
     download_list = []
@@ -370,7 +370,7 @@ def check_column_names_fn(df_list, asset_dir, file_end):
     """ Sort input dataframe into either the checked_list or faulty_list based on it having only the required column
     headings.
 
-    :param df_list: list object containing open dataframes extracted from the pastoral districts directory.
+    :param df_list: list object containing open dataframes extracted from the pastoral districts' directory.
     :param asset_dir: directory containing correct empty dataframe structures.
     :param file_end: string object containing the file name.
     :return checked_list: list object containing dataframes that matched.
@@ -467,7 +467,7 @@ def concat_and_clean_df_fn(list_a):
 
 
 def concat_list_fn(list_a, feature_type):
-    """
+    """ Concat list of dataframes into a single geo-dataframe (Shape specific)
 
     :param list_a: list object containing open dataframes.
     :param feature_type: string object containing the feature name.
@@ -476,7 +476,7 @@ def concat_list_fn(list_a, feature_type):
     """
 
     # Call the concat_and_clean_df function to concatenate open geo-dataframes, drop duplicates, and delete features
-    # NOTES and OBJECTID. Additionally, if 'Not recorded'  is contained within the LABEL it is removed.
+    # NOTES and OBJECT_ID. Additionally, if 'Not recorded'  is contained within the LABEL it is removed.
     input_data_gdf = concat_and_clean_df_fn(list_a)
 
     print(' - All ', feature_type, ' have been concatenated into one dataframe.')
@@ -487,7 +487,6 @@ def concat_list_fn(list_a, feature_type):
 
         print("Value counts input_data: ", input_data_gdf["DELETE"].value_counts())
 
-        #removed_delete_gdf = input_data_gdf[(input_data_gdf['DELETE'] == 0) | (input_data_gdf['DELETE'] == 2)]
         removed_delete_gdf = input_data_gdf[input_data_gdf['DELETE'].isin([0, 0., "0",  2, 2., "2"])]
         remaining_list = removed_delete_gdf ["DELETE"].unique().tolist()
         
@@ -623,15 +622,15 @@ def main_routine(path, assets_dir, year, export_dir, directory_list):
     """
     # print('step1_2_search_folders.py INITIATED.')
 
-    # call the directory_path_fn function to create a path to all property sub-directories and return them as a list.
+    # call the directory_path_fn function to create a path to all property subdirectories and return them as a list.
     prop_list = property_path_fn(path)
 
-    # call the upload_download_path_fn function to create a path to to the Server Upload and Download sub-directories
+    # call the upload_download_path_fn function to create a path to the Server Upload and Download subdirectories
     # for each property and return them as a list.
     upload_list, download_list = upload_download_path_fn(prop_list)
 
     # call the extract_paths_fn function to search through each server upload subdirectory within the root pastoral
-    # directory directory for line, point and polygon shapefiles, read them in as  geo-dataframe and append them to a
+    # directory for line, point and polygon shapefiles, read them in as  geo-dataframe and append them to a
     # list.
     print("Checking that the shapefile geometry is accurate.....")
     points_list, lines_list, poly_list, paddocks_list, files_list = extract_paths_fn(upload_list, year, directory_list)
