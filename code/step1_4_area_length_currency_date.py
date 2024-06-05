@@ -56,8 +56,27 @@ def calculate_length_km2_fn(gdf):
     """
 
     gdf2 = gdf.copy()
+
+    print("gdf2.columns: ", gdf2.columns)
+
     gdf3 = gdf2.to_crs(epsg=3577)
-    gdf3["LENGTH_M"] = round(gdf3["geometry"].length) # / 10 ** 6
+
+    length_fault_list = []
+    for g in gdf3.geometry:
+        print(g)
+        try:
+            #print("length: ", round(g.length))
+            print("-" * 20)
+        except:
+            print("error" * 50)
+            var_ = g.PROPERTY
+            length_fault_list.append(var_)
+
+    if len(length_fault_list) > 0:
+        length_fault_set = set(length_fault_list)
+        print("Faulty length fields in the following properties: ", length_fault_set)
+        import sys
+        sys.exit()
 
     output_gdf = gdf3.to_crs(epsg=4283)
 
@@ -85,6 +104,9 @@ def main_routine(gdf, feature_type, transition_dir, year):
     """ Calculate the length of lines and the area of polygons and add the currency date and time.
     """
 
+    # print("gdf: ", gdf)
+    # print(gdf.crs)
+
     if feature_type == "polygons":
         gdf = calculate_area_km2_fn(gdf)
         print('Calculate area and length:')
@@ -97,10 +119,13 @@ def main_routine(gdf, feature_type, transition_dir, year):
 
     elif feature_type == "lines":
 
+        print(gdf.FEATURE.unique())
         # drop Fenceline Open and Fenceline Neighbour
         gdf_ = gdf[gdf["FEATURE"] != "Fenceline Open"]
+        print("gdf_: ", gdf_.shape)
         gdf__ = gdf_[gdf_["FEATURE"] != "Fenceline Neighbour"]
-
+        print("gdf__: ", gdf__.shape)
+        gdf__.to_file(r"P:\Pipelines\Output\rmb_infrastructure_transition\error.shp", driver="ESRI Shapefile")
         gdf = calculate_length_km2_fn(gdf__)
         print('Calculate area and length:')
         print(' - lines length calculated.')

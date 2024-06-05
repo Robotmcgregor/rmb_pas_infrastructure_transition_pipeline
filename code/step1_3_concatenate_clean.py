@@ -166,6 +166,7 @@ def concat_list_to_df_fn(list_a):
 
 
 def identify_set_fn(feature_type):
+
     """ Determine the feature group and feature set based on the feature type.
 
     :param feature_type: string object containing the type of feature (point, line polygon).
@@ -210,12 +211,14 @@ def pastoral_estate_check_fn(gdf, variable_, dict_):
     :return gdf: output geo-dataframe object containing the test data with an updated variable_ feature.
     :return final_verified_tag_list: list object with status variables (i.e. VERIFIED, AUTO-CORRECTED or FAULTY)
     """
-
+    print("="*50)
+    print("=" * 50)
+    print("=" * 50)
     final_verified_tag_list = []
     final_prop_code_list = []
 
     for prop_ in gdf.PROPERTY.unique():
-        #print('prop: ', prop_)
+        print('prop: ', prop_)
         # gdf filtered by:  prop_
         property_filter = gdf[gdf['PROPERTY'] == prop_]
         prop_code = dict_[prop_]
@@ -224,6 +227,8 @@ def pastoral_estate_check_fn(gdf, variable_, dict_):
         verified_tag_list = []
         prop_code_list = []
         for prop_tag in prop_tag_list:
+            #print("prop_tag: ", prop_tag)
+            #print("prop code: ", prop_code)
             if prop_tag == prop_code:
                 verified_tag_list.append('VERIFIED')
                 prop_code_list.append(prop_code)
@@ -272,9 +277,9 @@ def check_property_details_fn(pastoral_estate_gdf, gdf):
     identified within the PROP_TAG column
     """
     prop_dist_dict = pastoral_estate_gdf.set_index('PROPERTY').to_dict()['DISTRICT']
-    # print('prop_dist_dict: ', prop_dist_dict)
+    #print('prop_dist_dict: ', prop_dist_dict)
     prop_prop_code_dict = pastoral_estate_gdf.set_index('PROPERTY').to_dict()['PROP_TAG']
-    # print('prop_prop_code_dict: ',prop_prop_code_dict)
+    #print('prop_prop_code_dict: ',prop_prop_code_dict)
     property_name_list = pastoral_estate_gdf.PROPERTY.tolist()
     property_name_set = set(property_name_list)
 
@@ -359,6 +364,7 @@ def main_routine(gdf, feature_type, pastoral_estate):
     # Update feature with output list
     gdf['FEATURE'] = output_list
 
+
     # Call the check_property_details function to create two dictionaries based on property name.
     gdf, property_name_set, district_verified_list, prop_tag_verified_list = check_property_details_fn(
         pastoral_estate_gdf, gdf)
@@ -382,6 +388,39 @@ def main_routine(gdf, feature_type, pastoral_estate):
     print(gdf.STATUS.value_counts())
     print('-'*30)
 
+    faulty_gdf = gdf[gdf["STATUS"] ==  "ERROR"]
+    good_gdf = gdf[gdf["STATUS"] != "ERROR"]
+
+
+    if len(faulty_gdf.index) != 0 and len(good_gdf.index) == 0:
+        print("ERROR_" * 50)
+        print("ERROR_" * 50)
+        print("ERROR_" * 50)
+        print("ERROR_" * 50)
+        print("ERROR_" * 50)
+        print("=" * 50)
+        print(f"100 % of observations has errors within the current {feature_type} shapefile......")
+        print(faulty_gdf.PROPERTY.value_counts())
+
+        print(f"The script may behave erratically; as such , the script has been terminated.")
+        print("-"*30)
+        print(f"Solution:")
+        print("1. Find shapefile and correct issue.")
+        print("2. Delete all data in for migration folders")
+        print("3. Re run pipeline")
+
+
+
+    # print(faulty_gdf["PROPERTY"].value_counts())
+
+    # print("faulty_gdf: ", faulty_gdf.columns)
+    # print("good_gdf: ", good_gdf)
+    # print("feature: ", feature_type)
+
+    # import sys
+    # sys.exit()
+
+    #return good_gdf, faulty_gdf #gdf
     return gdf
 
 

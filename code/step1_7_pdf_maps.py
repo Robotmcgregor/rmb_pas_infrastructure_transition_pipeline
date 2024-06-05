@@ -90,7 +90,7 @@ def main_routine(year, pastoral_districts_path, transition_dir):
     # for each property and return them as a list.
     upload_list = pdf_maps_upload_path_fn(prop_list, year)
 
-    output_location = os.path.join(transition_dir, 'For_Migration', 'Pdf_Maps')
+    output_location = os.path.join(transition_dir, 'for_migration', 'pdf_maps')
 
     if not os.path.exists(output_location):
         os.mkdir(output_location)
@@ -99,7 +99,7 @@ def main_routine(year, pastoral_districts_path, transition_dir):
 
         if glob("{}\\*.pdf".format(upload_map)):
             for pdf_map in glob("{}\\*.pdf".format(upload_map)):
-                print(" - Working on: ", pdf_map)
+                print(" - Located: ", pdf_map)
 
                 file_list = pdf_map.split('\\')
                 export_file = "{0}\\{1}".format(output_location, file_list[-1])
@@ -135,7 +135,7 @@ def main_routine(year, pastoral_districts_path, transition_dir):
             except:
                 print("Error while deleting file ", pdf_map)
         else:
-            print(" -- No maps located in ..... ", upload_map)
+            pass
 
 if __name__ == '__main__':
     main_routine()

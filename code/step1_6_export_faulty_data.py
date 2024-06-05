@@ -33,7 +33,7 @@ import geopandas as gpd
 warnings.filterwarnings("ignore")
 
 
-def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_list_item, year):
+def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_list_item, year, date_str):
     """ Export a copy of the property specific FAULTY data that has NOT been uploaded to the for_migration directory OR
     the previous upload directories.
 
@@ -48,24 +48,25 @@ def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_li
         prop_filter = prop_curr_test[prop_curr_test['PROPERTY'] == prop_]
         dist_ = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DISTRICT'].iloc[0]
         prop_code = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'PROP_TAG'].iloc[0]
-        currency = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DATE_CURR'].iloc[0]
+        #currency = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DATE_CURR'].iloc[0]
+        print("CURRENCY DATE - faulty: ", currency)
 
-        property_name = "{0}_{1}".format(prop_code, prop_.replace(' ', '_').title())
+        property_name = "{0}_{1}".format(prop_code.lower(), prop_.replace(' ', '_').lower())
         dist = dist_.replace(' ', '_')
 
-        if dist == 'Northern_Alice_Springs':
-            district = 'Northern_Alice'
-        elif dist == 'Southern_Alice_Springs':
-            district = 'Southern_Alice'
-        elif dist == 'Victoria_River':
-            district = 'VRD'
+        if dist == 'northern_alice_springs':
+            district = 'northern_alice'
+        elif dist == 'southern_alice_springs':
+            district = 'southern_alice'
+        elif dist == 'victoria_river':
+            district = 'vrd'
         else:
             district = dist
 
-        datetime_object = datetime.strptime(currency, "%Y-%m-%d %H:%M:%S")
-        date_str = datetime_object.strftime("%Y%m%d_%H%M%S")
+        #datetime_object = datetime.strptime(currency, "%Y-%m-%d") # %H:%M:%S")
+        #date_str = datetime_object.strftime("%Y%m%d") #_%00%00%00")
 
-        output_path = os.path.join(pastoral_districts_path, district, property_name, 'Infrastructure', 'Server_Upload',
+        output_path = os.path.join(pastoral_districts_path, district, property_name, 'infrastructure', 'server_upload',
                                    str(year), dir_list_item)
 
         check_path = os.path.exists(output_path)
@@ -84,23 +85,38 @@ def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_li
               '  --- ', output)
 
 
-def main_routine(year, pastoral_districts_path, primary_export_dir, directory_list):
+def main_routine(year, pastoral_districts_path, primary_export_dir, directory_list, faulty_gdf_list, date_str, datetime_object):
     """ This script controls the distribution of cleaned geo-dataframes in the transition, property and migration lists.
     Workflow is manages by the value relative to the property name in the status dictionary.
     """
 
     print('=' * 50)
     print("Faulty data")
-    print("directory_list: ", directory_list)
+    # print("directory_list: ", directory_list)
 
     for feature_type in directory_list:
+        # print("Feature_Type: ", feature_type)
 
-        n = os.path.join(primary_export_dir, 'Faulty', feature_type)
-        print(n)
-        for file in glob(n + '\\*.shp'):
+        n = os.path.join(primary_export_dir, 'faulty', feature_type)
+        #print(n)
+        for file in glob(os.path.join(n, "*{0}.shp".format(feature_type))):
             gdf = gpd.read_file(file)
 
-            property_export_shapefile_fn(gdf, pastoral_districts_path, feature_type, year)
+            property_export_shapefile_fn(gdf, pastoral_districts_path, feature_type, year, date_str)
+
+    if len(faulty_gdf_list) >0 :
+        for faulty in faulty_gdf_list:
+            print(faulty)
+
+            n = os.path.join(primary_export_dir, 'faulty') #, feature_type)
+            print(n)
+
+            property_export_shapefile_fn(gdf, pastoral_districts_path, feature_type, year, date_str)
+            ##TODO delete
+            import sys
+            sys.exit()
+
+
 
 
 if __name__ == '__main__':

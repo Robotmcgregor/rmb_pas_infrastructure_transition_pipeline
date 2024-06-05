@@ -54,7 +54,7 @@ def convert_to_df_fn(previous_gdf, gdf):
     return test_df, previous_df
 
 
-def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_list_item, year):
+def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_list_item, year, date_str):
     """ Export a copy of the property specific data that has been uploaded to the for_migration directory and previous
     upload directories.
 
@@ -70,28 +70,42 @@ def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_li
         prop_filter = prop_curr_test[prop_curr_test['PROPERTY'] == prop_]
         dist_ = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DISTRICT'].iloc[0]
         prop_code = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'PROP_TAG'].iloc[0]
-        currency = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DATE_CURR'].iloc[0]
-        #print("currency: ", currency)
+        #currency = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DATE_CURR'].iloc[0]
+        
+        # print("currency: ", currency)
+        # print("currency type: ", type(currency))
+        #
+        # import sys
+        # sys.exit()
+        print("Property: ", prop_)
+        print("prop filter: ", prop_filter.PROPERTY.unique())
+        print("district: ", dist_)
+        print("prop_code: ", prop_code)
 
-        property_name = "{0}_{1}".format(prop_code, prop_.replace(' ', '_').title())
-        dist = dist_.replace(' ', '_')
+        property_name = "{0}_{1}".format(prop_code.lower(), prop_.replace(' ', '_').lower())
+        dist = dist_.replace(' ', '_').lower()
+        print("dist: ", dist)
 
-        if dist == 'Northern_Alice_Springs':
-            district = 'Northern_Alice'
-        elif dist == 'Southern_Alice_Springs':
-            district = 'Southern_Alice'
-        elif dist == 'Victoria_River':
-            district = 'VRD'
+
+        if dist == 'northern_alice_springs':
+            district = 'northern_alice'
+        elif dist == 'southern_alice_springs':
+            district = 'southern_alice'
+        elif dist == 'victoria_river':
+            district = 'vrd'
         else:
             district = dist
 
 
-        datetime_object = datetime.strptime(currency, "%Y-%m-%d %H:%M:%S")
+        #datetime_object = datetime.strptime(currency, "%Y-%m-%d %H:%M:%S")
+        #datetime_object = datetime.strptime(currency, "%Y-%m-%d %H:%M:%S")
 
-        date_str = datetime_object.strftime("%Y%m%d_%H%M%S")
+        #date_str = datetime_object.strftime("%Y%m%d_%H%M%S")
 
-        output_path = os.path.join(pastoral_districts_path, district, property_name, 'Infrastructure', 'Server_Upload',
+        output_path = os.path.join(pastoral_districts_path, district, property_name, 'infrastructure', 'server_upload',
                                    str(year), dir_list_item)
+
+        print("output_path: ", output_path)
 
         check_path = os.path.exists(output_path)
 
@@ -100,7 +114,7 @@ def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_li
 
         prop_filter = prop_filter.replace(['Not Recorded'], "")
         prop_filter['UPLOAD'] = 'Transition'
-        output = ("{0}\\{1}_Transition_{2}.shp".format(output_path, dir_list_item, date_str))
+        output = ("{0}\\{1}_transition_{2}.shp".format(output_path, dir_list_item, date_str))
         print(' -- ', output)
 
         # if 'TRAN_DATE' in prop_filter.columns:
@@ -108,7 +122,7 @@ def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_li
 
         prop_filter.to_file(output, driver="ESRI Shapefile")
 
-        prop_filter.to_csv("{0}\\{1}_Transition_{2}.csv".format(output_path, dir_list_item.title(), date_str))
+        prop_filter.to_csv("{0}\\{1}_transition_{2}.csv".format(output_path, dir_list_item.lower(), date_str))
 
 
 def for_migration_export_shapefile_fn(test_data_gdf, for_migration_dir_path, feature_type, pt_schema):
@@ -121,9 +135,17 @@ def for_migration_export_shapefile_fn(test_data_gdf, for_migration_dir_path, fea
     :param feature_type: string object containing the shapely object type (i.e. points, lines etc.)
     """
 
-    output = "{0}\\Pastoral_Infra_{1}.shp".format(for_migration_dir_path, feature_type.title())
+    output = "{0}\\Pastoral_Infra_{1}.shp".format(for_migration_dir_path, feature_type.lower())
+
+    print("migration output: ", output)
     check_file = os.path.exists(output)
+
+    print("migration check file: ", check_file)
     print(" - For Migration dataset updated.")
+
+    # print(test_data_gdf.DATE_CURR)
+    # import sys
+    # sys.exit()
 
     if check_file:
         gdf = gpd.read_file(output, driver="ESRI shapefile")
@@ -167,25 +189,25 @@ def export_transition_fn(new_gdf, file_path, feature_type):
     output_gdf_sort.to_file(file_path, driver="ESRI Shapefile", schema = pt_schema)
 
 
-def main_routine(new_gdf, feature_type, transition_dir, year, pastoral_districts_path):
+def main_routine(new_gdf, feature_type, transition_dir, year, pastoral_districts_path, date_str, datetime_object):
     """ 1. Search for feature type specific data already in the transfer directory.
 
     """
 
     print('Searching for ', feature_type, ' data already in the transition directory....')
-    previous_dir_path = os.path.join(transition_dir, "Previous_Transfer", feature_type.title())
+    previous_dir_path = os.path.join(transition_dir, "previous_transfer", feature_type.lower())
     print(' - ',  previous_dir_path)
-    for_migration_dir_path = os.path.join(transition_dir, "For_Migration", feature_type.title())
+    for_migration_dir_path = os.path.join(transition_dir, "for_migration", feature_type.lower())
 
-    if glob("{0}\\{1}".format(previous_dir_path, "Previous_Transfer_*_gda94.shp")):
+    if glob("{0}\\{1}".format(previous_dir_path, "previous_transfer_*_gda94.shp")):
 
-        for file_path in glob("{0}\\{1}".format(previous_dir_path, "Previous_Transfer_*_gda94.shp")):
+        for file_path in glob("{0}\\{1}".format(previous_dir_path, "previous_transfer_*_gda94.shp")):
             print(' - Previous transfer shapefile located: ', file_path)
             # print(file_path)
 
             pt_schema = export_transition_fn(new_gdf, file_path, feature_type)
-
-            property_export_shapefile_fn(new_gdf, pastoral_districts_path, feature_type, year)
+            #new_gdf.to_file(r'P:\Pastoral_Infrastructure\transition\test.shp')
+            property_export_shapefile_fn(new_gdf, pastoral_districts_path, feature_type, year, date_str)
 
             for_migration_export_shapefile_fn(new_gdf, for_migration_dir_path, feature_type, pt_schema)
     else:

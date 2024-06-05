@@ -44,6 +44,7 @@ def property_path_fn(path):
 
     # create a list of pastoral districts.
     dir_list = next(os.walk(path))[1]
+    print("dir_list: ", dir_list)
 
     prop_list = []
 
@@ -57,6 +58,7 @@ def property_path_fn(path):
         for prop_name in property_dir:
             # join the path, district and property name to create a path to each property directory.
             prop_path = os.path.join(path, district, prop_name)
+            #print("prop_path: ", prop_path)
             # append all property paths to a list
             prop_list.append(prop_path)
 
@@ -64,18 +66,19 @@ def property_path_fn(path):
 
 
 def upload_download_path_fn(prop_list):
-    """ Create a path to the Server Upload and Download subdirectories for each property and return them as a list.
+    """ Create a path to to the Server Upload and Download sub-directories for each property and return them as a list.
 
-    :param prop_list: list object containing the path to all property subdirectories.
-    :return upload_list: list object containing the path to each property Server_Upload subdirectory.
-    :return download_list: list object containing the path to each property Server_Upload subdirectory.
+    :param prop_list: list object containing the path to all property sub-directories.
+    :return upload_list: list object containing the path to each properties Server_Upload sub-directory.
+    :return download_list: list object containing the path to each properties Server_Upload sub-directory.
     """
     upload_list = []
     download_list = []
     for prop_path in prop_list:
-        upload_path = os.path.join(prop_path, 'Infrastructure', 'Server_Upload')
+        upload_path = os.path.join(prop_path, 'infrastructure', 'server_upload')
+        #print("upload_path: ", upload_path)
         upload_list.append(upload_path)
-        download_path = os.path.join(prop_path, 'Infrastructure', 'Server_Download')
+        download_path = os.path.join(prop_path, 'infrastructure', 'server_download')
         download_list.append(download_path)
 
     return upload_list, download_list
@@ -138,7 +141,6 @@ def shapely_check_geom_type_fn(files, feature_type):
     else:
         true_false = False
 
-
     return true_false, shp_geom
 
 
@@ -189,17 +191,19 @@ def double_check_polygon_fn(gdf, feature_type):
     feature_list = gdf.FEATURE.unique().tolist()
 
     if "Paddock" in feature_list:
-        print('- should be paddocks')
+        print('- should be Paddocks')
         correct_feature = "paddocks"
     else:
-        print('- should be polygon')
+        print('- should be Polygon')
         correct_feature = "polygons"
 
     print("correct_feature: ", correct_feature)
+
+
     return correct_feature
 
 
-def extract_paths_fn(upload_list, year, directory_list):
+def extract_paths_fn(upload_list, year, directory_list, date_str, datetime_object):
     """ Search through each server upload subdirectory within the root pastoral directory directory for line, point and
     polygon shapefiles, read them in as  geo-dataframe and append them to a list if UPLOAD column does not exists.
 
@@ -227,22 +231,39 @@ def extract_paths_fn(upload_list, year, directory_list):
     # loop through each property server upload subdirectory.
 
     for server_upload_path in upload_list:
+
+        # print("Upload_List: ", upload_list)
+        # print("Server Upload Path: ", server_upload_path)
         # loop though each item in the directory list (i.e. points, polygons, lines etc.)
         for feature_type in directory_list:
 
             # create a path for to a properties feature type sub-directory within the server upload directory
             direct = os.path.join(server_upload_path, str(year), feature_type)
-
+            #print("direct: ", direct)
             check_folder = os.path.isdir(direct)
-
             if check_folder:
+                #print("direct: ", direct)
 
                 for files in glob(direct + '\\*.shp'):
+                    #print("files: ", files)
+                    # print("shut pipeline")
+                    # import sys
+                    # sys.exit()
 
-                    # print("Located: ", files)
-                    #
                     gdf = gpd.read_file(files)
-                    #
+
+                    # update currency date
+                    gdf.DATE_CURR = datetime_object
+
+                    # print(gdf.crs)
+                    # print(gdf.PROPERTY.unique())
+                    # print(gdf.shape)
+                    if not gdf.crs:
+                        print("The following data has no coordinate reference system, script can NOT continue until "
+                              "data repaired or removed:")
+                        print(" - ", files)
+                        import sys
+                        sys.exit()
                     # # # check that a file is only for one property.
                     # prop_list = gdf["PROPERTY"].unique().tolist()
                     # print("looking at data from: ", prop_list)
@@ -290,29 +311,35 @@ def extract_paths_fn(upload_list, year, directory_list):
                             # import sys
                             # sys.exit()
 
-
                             if upload:
                                 # shutil.copy(files, output_dir)
                                 # sort and store open geo-dataframe's to feature_type specific lists.
-                                if feature_type == 'Points':
+                                if feature_type == 'points':
                                     points_list.append(trans_gdf)
 
-                                elif feature_type == 'Lines':
+                                elif feature_type == 'lines':
                                     lines_list.append(trans_gdf)
 
-                                elif feature_type == 'Polygons':
+                                elif feature_type == 'polygons':
                                     print('feature type is: ', feature_type)
                                     correct_feature = double_check_polygon_fn(trans_gdf, feature_type)
-                                    if feature_type == correct_feature.title():
+                                    print("Correct feature1: ",correct_feature)
+
+                                    # import sys
+                                    # sys.exit()
+                                    if feature_type == correct_feature.lower():
                                         poly_list.append(trans_gdf)
                                     else:
                                         paddocks_list.append(trans_gdf)
 
-                                elif feature_type == 'Paddocks':
+                                elif feature_type == 'paddocks':
                                     print('feature type is: ', feature_type)
                                     correct_feature = double_check_polygon_fn(trans_gdf, feature_type)
+                                    print("Correct feature2: ",correct_feature)
 
-                                    if feature_type == correct_feature.title():
+                                    # import sys
+                                    # sys.exit()
+                                    if feature_type == correct_feature.lower():
                                         paddocks_list.append(trans_gdf)
 
                                     else:
@@ -370,14 +397,17 @@ def check_column_names_fn(df_list, asset_dir, file_end):
     """ Sort input dataframe into either the checked_list or faulty_list based on it having only the required column
     headings.
 
-    :param df_list: list object containing open dataframes extracted from the pastoral districts' directory.
+    :param df_list: list object containing open dataframes extracted from the pastoral districts directory.
     :param asset_dir: directory containing correct empty dataframe structures.
     :param file_end: string object containing the file name.
     :return checked_list: list object containing dataframes that matched.
     :return faulty_list: list objet containing dataframes that did not match.
     """
 
+    print('{0}\\shapefile\\{1}'.format(asset_dir, file_end))
     accurate_df = gpd.read_file('{0}\\shapefile\\{1}'.format(asset_dir, file_end), index_col=0)
+
+    print("accurate_df: ", accurate_df)
 
     checked_list = []
     faulty_list = []
@@ -386,6 +416,9 @@ def check_column_names_fn(df_list, asset_dir, file_end):
         # create two lists from the correctly formatted csv (accurate) and the data for upload (test)
         accurate = accurate_df.columns.tolist()
         test_cols = test_df.columns.tolist()
+
+        # print("accurate: ", accurate)
+        # print("test_cols: ", test_cols)
 
         if "DELETE" in test_cols:
             accurate_cols = accurate.copy()
@@ -396,7 +429,7 @@ def check_column_names_fn(df_list, asset_dir, file_end):
             accurate_cols = accurate.copy()
 
         else:
-            print("ERROR "*20)
+            print("ERROR " * 20)
             print("Pipeline shutdown")
             import sys
             sys.exit()
@@ -467,7 +500,7 @@ def concat_and_clean_df_fn(list_a):
 
 
 def concat_list_fn(list_a, feature_type):
-    """ Concat list of dataframes into a single geo-dataframe (Shape specific)
+    """
 
     :param list_a: list object containing open dataframes.
     :param feature_type: string object containing the feature name.
@@ -476,39 +509,42 @@ def concat_list_fn(list_a, feature_type):
     """
 
     # Call the concat_and_clean_df function to concatenate open geo-dataframes, drop duplicates, and delete features
-    # NOTES and OBJECT_ID. Additionally, if 'Not recorded'  is contained within the LABEL it is removed.
+    # NOTES and OBJECTID. Additionally, if 'Not recorded'  is contained within the LABEL it is removed.
     input_data_gdf = concat_and_clean_df_fn(list_a)
 
     print(' - All ', feature_type, ' have been concatenated into one dataframe.')
 
     if 'DELETE' in input_data_gdf.columns:
+
+        input_data_gdf['DELETE'] = input_data_gdf['DELETE'].fillna(0)
+        print("ERROR You have Null values in the delete column")
+
         print(' - Concatenated geo-dataframe contains ', len(input_data_gdf.index), ' observations.')
         # delete the variable 1 from the delete column - 2 will be deleted from the for migration pipeline.
 
         print("Value counts input_data: ", input_data_gdf["DELETE"].value_counts())
 
-        removed_delete_gdf = input_data_gdf[input_data_gdf['DELETE'].isin([0, 0., "0",  2, 2., "2"])]
-        remaining_list = removed_delete_gdf ["DELETE"].unique().tolist()
-        
+        # removed_delete_gdf = input_data_gdf[(input_data_gdf['DELETE'] == 0) | (input_data_gdf['DELETE'] == 2)]
+        removed_delete_gdf = input_data_gdf[input_data_gdf['DELETE'].isin([0, 0., "0", 2, 2., "2"])]
+        remaining_list = removed_delete_gdf["DELETE"].unique().tolist()
+
         print(' - Delete observations where DELETE = 1')
         print(' - ', (len(input_data_gdf.index) - len(removed_delete_gdf.index)), ' observations were deleted.')
         print("Value remaining data: ", removed_delete_gdf["DELETE"].value_counts())
 
         if len(removed_delete_gdf) == 0:
             print("ERROR - Dirty data - check your DELETE column")
-            
+
             import sys
             sys.exit()
 
     else:
         removed_delete_gdf = input_data_gdf
 
-
     if len(removed_delete_gdf.index) > 0:
         pass
     else:
         removed_delete_gdf = None
-
 
     return removed_delete_gdf, feature_type
 
@@ -539,62 +575,64 @@ def concat_faulty_list_fn(list_a, feature_type, export_dir, year):
 
         for prop in gdf.PROPERTY.unique():
             print('prop: ', prop)
-            output = '{0}\\Faulty\\{1}\\{2}_{1}_faulty.shp'.format(export_dir, feature_type.title(), prop.title().replace(" ", "_"))
+            # output = '{0}\\faulty\\{1}\\{2}_{1}_faulty.shp'.format(export_dir, # , feature_type.title()
+            #                                                        prop.title().replace(" ", "_"))
+
+            output = '{0}\\faulty\\{2}_{1}_faulty.shp'.format(export_dir, feature_type.lower(), prop.title().replace(" ", "_"))
             print('Faulty geo-dataframe has been transition to: ', output)
         gdf.to_file(output)
-
-
-
-
-def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_list_item, year):
-    """ Export a copy of the property specific FAULTY data that has NOT been uploaded to the for_migration directory OR
-    the previous upload directories.
-
-    :param prop_curr_test: geo-dataframe containing new property specific new data.
-    :param pastoral_districts_path: string object containing the path to the pastoral districts directory.
-    :param dir_list_item: string object containing the Shapely feature type (i.e. points, lines)
-    :param year: integer object containing the year YYYY.
-    """
-    for prop_ in prop_curr_test.PROPERTY.unique():
-
-        print(" -- Cleaned data has been returned to ", prop_, " Server Upload directory.")
-        prop_filter = prop_curr_test[prop_curr_test['PROPERTY'] == prop_]
-        dist_ = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DISTRICT'].iloc[0]
-        prop_code = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'PROP_TAG'].iloc[0]
-        currency = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DATE_CURR'].iloc[0]
-
-        property_name = "{0}_{1}".format(prop_code, prop_.replace(' ', '_').title())
-        dist = dist_.replace(' ', '_')
-
-        if dist == 'Northern_Alice_Springs':
-            district = 'Northern_Alice'
-        elif dist == 'Southern_Alice_Springs':
-            district = 'Southern_Alice'
-        elif dist == 'Victoria_River':
-            district = 'VRD'
-        else:
-            district = dist
-
-        datetime_object = datetime.strptime(currency, "%Y-%m-%d %H:%M:%S")
-        date_str = datetime_object.strftime("%Y%m%d_%H%M%S")
-
-        output_path = os.path.join(pastoral_districts_path, district, property_name, 'Infrastructure', 'Server_Upload',
-                                   str(year), dir_list_item)
-
-        check_path = os.path.exists(output_path)
-
-        if not check_path:
-            os.mkdir(output_path)
-
-        prop_filter = prop_filter.replace(['Not Recorded'], "")
-        prop_filter['UPLOAD'] = 'Transition'
-        output = ("{0}\\{1}_transition_{2}.shp".format(output_path, dir_list_item, date_str))
-
-        prop_filter.to_file(output, driver="ESRI Shapefile")
-
-        prop_filter.to_csv("{0}\\{1}_Faulty_{2}.csv".format(output_path, dir_list_item, date_str))
-        print(' -- A copy of FAULTY data has been exported to the property directory '
-              '  --- ', output)
+# 
+# 
+# def property_export_shapefile_fn(prop_curr_test, pastoral_districts_path, dir_list_item, year, date_str):
+#     """ Export a copy of the property specific FAULTY data that has NOT been uploaded to the for_migration directory OR
+#     the previous upload directories.
+# 
+#     :param prop_curr_test: geo-dataframe containing new property specific new data.
+#     :param pastoral_districts_path: string object containing the path to the pastoral districts directory.
+#     :param dir_list_item: string object containing the Shapely feature type (i.e. points, lines)
+#     :param year: integer object containing the year YYYY.
+#     """
+#     for prop_ in prop_curr_test.PROPERTY.unique():
+# 
+#         print(" -- Cleaned data has been returned to ", prop_, " Server Upload directory.")
+#         prop_filter = prop_curr_test[prop_curr_test['PROPERTY'] == prop_]
+#         dist_ = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DISTRICT'].iloc[0]
+#         prop_code = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'PROP_TAG'].iloc[0]
+#         currency = prop_curr_test.loc[prop_curr_test['PROPERTY'] == prop_, 'DATE_CURR'].iloc[0]
+#         PRINT("CURRENCY: ", currency)
+# 
+#         property_name = "{0}_{1}".format(prop_code.lower(), prop_.replace(' ', '_').lower())
+#         dist = dist_.replace(' ', '_')
+#         print("property_name: ", property_name)
+#         if dist == 'northern_alice_springs':
+#             district = 'northern_alice'
+#         elif dist == 'southern_alice_springs':
+#             district = 'southern_alice'
+#         elif dist == 'victoria_river':
+#             district = 'vrd'
+#         else:
+#             district = dist
+# 
+#         datetime_object = datetime.strptime(currency, "%Y-%m-%d %H:%M:%S")
+#         date_str = datetime_object.strftime("%Y%m%d_%H%M%S")
+# 
+#         output_path = os.path.join(pastoral_districts_path, district, property_name, 'infrastructure', 'server_upload',
+#                                    str(year), dir_list_item)
+# 
+#         check_path = os.path.exists(output_path)
+# 
+#         if not check_path:
+#             os.mkdir(output_path)
+# 
+#         prop_filter = prop_filter.replace(['Not Recorded'], "")
+#         prop_filter['UPLOAD'] = 'Transition'
+#         output = ("{0}\\{1}_transition_{2}.shp".format(output_path, dir_list_item, date_str))
+# 
+#         prop_filter.to_file(output, driver="ESRI Shapefile")
+# 
+#         prop_filter.to_csv("{0}\\{1}_faulty_{2}.csv".format(output_path, dir_list_item, date_str))
+#         print(' -- A copy of FAULTY data has been exported to the property directory '
+#               '  --- ', output)
 
 
 def sort_file_paths_fn(files_list):
@@ -616,24 +654,25 @@ def sort_file_paths_fn(files_list):
     return delete_files_list
 
 
-def main_routine(path, assets_dir, year, export_dir, directory_list):
+def main_routine(path, assets_dir, year, export_dir, directory_list, date_str, datetime_object):
     """This script
 
     """
     # print('step1_2_search_folders.py INITIATED.')
 
-    # call the directory_path_fn function to create a path to all property subdirectories and return them as a list.
+    # call the directory_path_fn function to create a path to all property sub-directories and return them as a list.
     prop_list = property_path_fn(path)
 
-    # call the upload_download_path_fn function to create a path to the Server Upload and Download subdirectories
+    # call the upload_download_path_fn function to create a path to the Server Upload and Download sub-directories
     # for each property and return them as a list.
     upload_list, download_list = upload_download_path_fn(prop_list)
 
     # call the extract_paths_fn function to search through each server upload subdirectory within the root pastoral
-    # directory for line, point and polygon shapefiles, read them in as  geo-dataframe and append them to a
-    # list.
+    # directory for line, point and polygon shapefiles, read them in as geo-dataframe and append them to a list.
     print("Checking that the shapefile geometry is accurate.....")
-    points_list, lines_list, poly_list, paddocks_list, files_list = extract_paths_fn(upload_list, year, directory_list)
+    points_list, lines_list, poly_list, paddocks_list, files_list = extract_paths_fn(upload_list, year, directory_list,
+                                                                                     date_str, datetime_object)
+
     delete_files_list = sort_file_paths_fn(files_list)
     print('Files located for processing:')
     for i in delete_files_list:
@@ -665,7 +704,6 @@ def main_routine(path, assets_dir, year, export_dir, directory_list):
     print(' - Correct dataframes: ', len(checked_lines_list))
     print(' - Incorrect dataframes: ', len(faulty_lines_list))
 
-
     # ---------------------------------------------------- POLYGONS ----------------------------------------------------
 
     print('-' * 50)
@@ -673,17 +711,22 @@ def main_routine(path, assets_dir, year, export_dir, directory_list):
 
     # call the check_column_names_fn function to sort the input dataframe into either the checked_list or faulty_list
     # based on it having only the required column headings.
+
+
     checked_polygons_list, faulty_polygons_list = check_column_names_fn(
         poly_list, assets_dir, 'Pastoral_Infra_Polygons_Template.shp')
 
     print(' - Correct dataframes: ', len(checked_polygons_list))
     print(' - Incorrect dataframes: ', len(faulty_polygons_list))
 
-
     # ---------------------------------------------------- PADDOCKS ----------------------------------------------------
 
     print('-' * 50)
     print('PADDOCKS')
+
+
+
+
     # print('!'*50)
     # call the check_column_names_fn function to sort the input dataframe into either the checked_list or faulty_list
     # based on it having only the required column headings.
@@ -693,7 +736,6 @@ def main_routine(path, assets_dir, year, export_dir, directory_list):
     print(' - Correct dataframes: ', len(checked_paddocks_list))
     print(' - Incorrect dataframes: ', len(faulty_paddocks_list))
 
-
     # ------------------------------------------------- WORKFLOW -------------------------------------------------------
 
     # verify that the checked points file list contains a result
@@ -701,7 +743,7 @@ def main_routine(path, assets_dir, year, export_dir, directory_list):
     feature_type_list = []
 
     if len(checked_points_list) > 0:
-        print('-'*50)
+        print('-' * 50)
         print('Processing points.....')
         print('There are ', len(checked_points_list), ' geo-dataframes')
         points_removed_delete_gdf, feature_type = concat_list_fn(
@@ -737,7 +779,6 @@ def main_routine(path, assets_dir, year, export_dir, directory_list):
 
     if len(faulty_polygons_list) > 0:
         concat_faulty_list_fn(faulty_polygons_list, 'polygons', export_dir, year)
-
 
     if len(checked_paddocks_list) > 0:
         print('-' * 50)
